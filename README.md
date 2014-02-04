@@ -1,4 +1,5 @@
-Ò»¸öµ¹¼ÆÊ±Ğ¡¹¤¾ß
-ÏÂÔØµØÖ·£º
-Windows°æ£¨ĞèÒª°²×°jre£©£ºhttps://github.com/wiadufachen/countdown/blob/master/target/countdown-1.0.0.0-launch4j.exe?raw=true
-Java°æ£ºhttps://github.com/wiadufachen/countdown/blob/master/target/countdown-1.0.0.0-shaded.jar?raw=true
+ä¸€ä¸ªå€’è®¡æ—¶å°å·¥å…·
+===================================
+ä¸‹è½½åœ°å€ï¼š</br>
+[Windowsç‰ˆï¼ˆéœ€è¦å®‰è£…jreï¼‰](https://github.com/wiadufachen/countdown/blob/master/target/countdown-1.0.0.0-launch4j.exe?raw=true)<br />
+[Javaç‰ˆ]https://github.com/wiadufachen/countdown/blob/master/target/countdown-1.0.0.0-shaded.jar?raw=true)<br />

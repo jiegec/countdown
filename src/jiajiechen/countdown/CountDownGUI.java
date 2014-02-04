@@ -6,7 +6,6 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
@@ -15,10 +14,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.MissingResourceException;
-import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.InvalidPreferencesFormatException;
+import java.util.prefs.Preferences;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -35,8 +36,6 @@ import org.joda.time.Period;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
-
-import com.blogspot.nerdydevel.AppLock;
 
 /**
  * This code was edited or generated using CloudGarden's Jigloo SWT/Swing GUI
@@ -59,8 +58,6 @@ public class CountDownGUI extends javax.swing.JFrame {
 	private JButton buttonNew;
 	private JTable table;
 	private JButton about;
-	private static final String prop = "jiajiechen.countdown.properties";
-	private static final boolean useLock = false;
 	private static Locale locale;
 	private static ResourceBundle bundle;
 	private static String className = new Object() {
@@ -87,13 +84,6 @@ public class CountDownGUI extends javax.swing.JFrame {
 	public static void main(String[] args) {
 		locale = Locale.getDefault();
 		bundle = ResourceBundle.getBundle(className, locale);
-		if (useLock) {
-			if (!AppLock.setLock(className)) {
-				JOptionPane.showMessageDialog(null,
-						getString("Only one instance!"));
-				System.exit(1);
-			}
-		}
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				CountDownGUI inst = new CountDownGUI();
@@ -102,10 +92,7 @@ public class CountDownGUI extends javax.swing.JFrame {
 				inst.setVisible(true);
 				inst.addWindowListener(new WindowAdapter() {
 					public void windowClosing(WindowEvent e) {
-						CountDownGUI.writeToFile(prop);
-						if (useLock) {
-							AppLock.releaseLock();
-						}
+						CountDownGUI.writeToFile("");
 					}
 				});
 			}
@@ -132,6 +119,11 @@ public class CountDownGUI extends javax.swing.JFrame {
 				getContentPane().add(about);
 				about.setText(getString("About"));
 				about.setBounds(320, 10, 80, 25);
+				about.addActionListener(new ActionListener() {
+					public void actionPerformed(ActionEvent evt) {
+						aboutActionPerformed(evt);
+					}
+				});
 			}
 			{
 				String[] headers = { getString("Item"), getString("Period") };
@@ -195,7 +187,7 @@ public class CountDownGUI extends javax.swing.JFrame {
 			this.setSize(410, 300);
 
 			countdown = new HashMap<String, DateTime>();
-			readFromFile(prop);
+			readFromFile("");
 			Timer timer = new Timer();
 			timer.schedule(new TimerTask() {
 
@@ -257,77 +249,81 @@ public class CountDownGUI extends javax.swing.JFrame {
 	}
 
 	private void readFromFile(String filename) {
-		Properties props = new Properties();
-		FileInputStream f;
-		try {
-			f = new FileInputStream(filename);
-			props.load(f);
-			Integer items = Integer.valueOf(props.getProperty("items"));
-			for (Integer i = 0; i < items; i++) {
-				String itemname = props.getProperty("item" + String.valueOf(i)
-						+ "name");
-				DateTime itemdate = DateTime.parse(props.getProperty("item"
-						+ String.valueOf(i) + "date"));
-				countdown.put(itemname, itemdate);
+		Preferences userData = Preferences
+				.userNodeForPackage(CountDownGUI.class);
+		if (filename.equals("") != true) {
+			try {
+				FileInputStream f = new FileInputStream(filename);
+				Preferences.importPreferences(f);
+				f.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InvalidPreferencesFormatException e) {
+				e.printStackTrace();
 			}
-			f.close();
-		} catch (IOException e) {
 
+		}
+		Integer items = Integer.valueOf(userData.get("items", "0"));
+		for (Integer i = 0; i < items; i++) {
+			String itemname = userData.get("item" + String.valueOf(i) + "name",
+					"");
+			DateTime itemdate = DateTime.parse(userData.get(
+					"item" + String.valueOf(i) + "date", ""));
+			countdown.put(itemname, itemdate);
 		}
 	}
 
-	public static void writeToFile(String filepath) {
-		Integer size = countdown.size();
-		File file = new File(filepath);
-		if (!file.exists()) {
+	public static void writeToFile(String filename) {
+		Preferences userData = Preferences
+				.userNodeForPackage(CountDownGUI.class);
+		if (filename.equals("") != true) {
 			try {
-				file.createNewFile();
-			} catch (IOException e2) {
-				e2.printStackTrace();
+				FileOutputStream f = new FileOutputStream(filename);
+				userData.exportNode(f);
+				f.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (BackingStoreException e) {
+				e.printStackTrace();
 			}
+
 		}
-		FileOutputStream f = null;
-		try {
-			f = new FileOutputStream(filepath);
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-			System.exit(1);
-		}
-		Properties prop = new Properties();
-		prop.setProperty("items", String.valueOf(size));
+		Integer size = countdown.size();
+		userData.put("items", String.valueOf(size));
 		Iterator<Entry<String, DateTime>> iter = countdown.entrySet()
 				.iterator();
 		Integer i = 0;
 		while (iter.hasNext()) {
 			Entry<String, DateTime> entry = (Entry<String, DateTime>) iter
 					.next();
-			prop.setProperty("item" + String.valueOf(i) + "name",
-					entry.getKey());
-			prop.setProperty("item" + String.valueOf(i) + "date",
-					DateTimeFormat.mediumDate().print(entry.getValue()));
+			userData.put("item" + String.valueOf(i) + "name", entry.getKey());
+			userData.put("item" + String.valueOf(i) + "date", DateTimeFormat
+					.mediumDate().print(entry.getValue()));
 			i++;
 		}
-		try {
-			prop.store(f, null);
-			f.close();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		
 	}
 
 	private void buttonImportActionPerformed(ActionEvent evt) {
 		JFileChooser fd = new JFileChooser();
-		fd.showOpenDialog(null);
-		File f = fd.getSelectedFile();
-		readFromFile(f.getAbsolutePath());
+		fd.setCurrentDirectory(new File("."));
+		if(fd.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
+		{
+			File f = fd.getSelectedFile();
+			readFromFile(f.getAbsolutePath());
+		}
+		
 	}
 
 	private void buttonExportActionPerformed(ActionEvent evt) {
 		JFileChooser fd = new JFileChooser();
+		fd.setCurrentDirectory(new File("."));
 		fd.showSaveDialog(null);
 		File f = fd.getSelectedFile();
 		CountDownGUI.writeToFile(f.getAbsolutePath());
+	}
+	
+	private void aboutActionPerformed(ActionEvent evt) {
+	    JOptionPane.showMessageDialog(null, "Jiajie Chen QQ:875053761 Website:http://chenstudio.tk");  
 	}
 
 }
