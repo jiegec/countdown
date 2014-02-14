@@ -1,0 +1,24 @@
+apply plugin: 'java'
+apply plugin: 'findbugs'
+apply plugin: 'pmd'
+defaultTasks 'clean', 'jar', 'copyJars'
+repositories { mavenCentral() }
+dependencies {
+    compile('joda-time:joda-time:+', 'com.toedter:jcalendar:+')
+}
+
+jar {
+    manifest { attributes 'Main-Class': 'jiajiechen.countdown.CountDownGUI' }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+}
+
+
+
+task copyJars(type: Copy) {
+    copy {
+        from 'build/libs'
+        into "$projectDir"
+    }
+}
+
+
